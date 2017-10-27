@@ -1,0 +1,5 @@
+---
+  - name: Restart Graylog
+    win_service:
+      name: collector-sidecar
+      state: restarted

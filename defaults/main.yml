@@ -1,0 +1,7 @@
+---
+  graylog_install_force: false
+  graylog_server_url:
+  tags:
+    - "win"
+    - "test"
+  graylog_logfiles: D:\wwr\photon\deploy\log

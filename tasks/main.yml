@@ -1,0 +1,67 @@
+---
+  - name: Check if Graylog is already installed
+    raw: "Get-Service | ? { $_.name -match \"collector-sidecar\"}"
+    register: graylog
+
+  - name: Bring nxlog.zip
+    win_copy:
+      src: zip/nxlog.zip
+      dest: C:\pix_tmp\nxlog.zip
+    when: graylog.stdout == "" or graylog_install_force
+
+  - name: Unpack nxlog.zip
+    raw: '& "C:\Program Files\7-Zip\7z.exe" x C:\pix_tmp\nxlog.zip -aoa -o"C:\Program Files (x86)"'
+    when: graylog.stdout == "" or graylog_install_force
+    ignore_errors: yes
+
+  - name: Remove nxlog.zip
+    win_file:
+      path: C:\pix_tmp\nxlog.zip
+      state: absent
+
+  - name: Bring graylog.zip
+    win_copy:
+      src: zip/graylog.zip
+      dest: C:\pix_tmp\graylog.zip
+    when: graylog.stdout == "" or graylog_install_force
+
+  - name: Unpack graylog.zip
+    raw: '& "C:\Program Files\7-Zip\7z.exe" x C:\pix_tmp\graylog.zip -aoa -o"C:\Program Files"'
+    when: graylog.stdout == "" or graylog_install_force
+    ignore_errors: yes
+
+  - name: Remove graylog.zip
+    win_file:
+      path: C:\pix_tmp\graylog.zip
+      state: absent
+
+  - name: Register Graylog service
+    win_shell: Graylog-collector-sidecar.exe -service install
+    args:
+      executable: cmd
+      chdir: C:\Program Files\Graylog\collector-sidecar
+    when: graylog.stdout == "" or graylog_install_force
+
+  - name: Generate collector-id
+    local_action: command uuidgen
+    register: collector_id
+    when: graylog.stdout == "" or graylog_install_force
+
+  - name: Update collector-id file
+    win_shell: echo {{ collector_id.stdout }} > collector-id
+    args:
+      executable: cmd
+      chdir: C:\Program Files\Graylog\collector-sidecar
+    when: graylog.stdout == "" or graylog_install_force
+
+  - name: Generate collector_sidecar.yml
+    win_template:
+      src: collector_sidecar.yml.j2
+      dest: C:\Program Files\Graylog\collector-sidecar\collector_sidecar.yml
+    notify:
+      - Restart Graylog
+
+  - name: Start Graylog
+    win_service:
+      name: collector-sidecar
+      state: started
